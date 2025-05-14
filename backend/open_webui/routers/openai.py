@@ -667,6 +667,8 @@ async def generate_chat_completion(
             "email": user.email,
             "role": user.role,
         }
+    else:
+        payload["user"] = user.email.replace('.', '_').replace('@', '_at_') if user.email else None
 
     url = request.app.state.config.OPENAI_API_BASE_URLS[idx]
     key = request.app.state.config.OPENAI_API_KEYS[idx]
