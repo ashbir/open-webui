@@ -2,7 +2,11 @@ import logging
 import requests
 from typing import Optional, List, Tuple
 
-from open_webui.env import SRC_LOG_LEVELS
+from open_webui.env import (
+    ENABLE_FORWARD_USER_INFO_HEADERS,
+    SRC_LOG_LEVELS,
+)
+from open_webui.models.users import UserModel
 
 log = logging.getLogger(__name__)
 log.setLevel(SRC_LOG_LEVELS["RAG"])
@@ -14,10 +18,12 @@ class ExternalReranker:
         api_key: str,
         url: str = "http://localhost:8080/v1/rerank",
         model: str = "reranker",
+        user: Optional[UserModel] = None,
     ):
         self.api_key = api_key
         self.url = url
         self.model = model
+        self.user = user
 
     def predict(self, sentences: List[Tuple[str, str]]) -> Optional[List[float]]:
         query = sentences[0][0]
@@ -30,16 +36,28 @@ class ExternalReranker:
             "top_n": len(docs),
         }
 
+        headers = {
+            "Content-Type": "application/json",
+            "Authorization": f"Bearer {self.api_key}",
+            **(
+                {
+                    "X-OpenWebUI-User-Name": self.user.name,
+                    "X-OpenWebUI-User-Id": self.user.id,
+                    "X-OpenWebUI-User-Email": self.user.email,
+                    "X-OpenWebUI-User-Role": self.user.role,
+                }
+                if ENABLE_FORWARD_USER_INFO_HEADERS and self.user
+                else {}
+            ),
+        }
+
         try:
             log.info(f"ExternalReranker:predict:model {self.model}")
             log.info(f"ExternalReranker:predict:query {query}")
 
             r = requests.post(
                 f"{self.url}",
-                headers={
-                    "Content-Type": "application/json",
-                    "Authorization": f"Bearer {self.api_key}",
-                },
+                headers=headers,
                 json=payload,
             )
 
