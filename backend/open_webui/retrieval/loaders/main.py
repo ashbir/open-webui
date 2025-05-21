@@ -85,6 +85,8 @@ known_source_ext = [
     "hs",
     "lhs",
     "json",
+    "md",
+    "mmd",
 ]
 
 
