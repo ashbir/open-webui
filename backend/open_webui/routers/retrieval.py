@@ -143,17 +143,16 @@ def get_rf(
     external_reranker_api_key: str = "",
     auto_update: bool = False,
 ):
-    rf = None
     if reranking_model:
         if any(model in reranking_model for model in ["jinaai/jina-colbert-v2"]):
             try:
                 from open_webui.retrieval.models.colbert import ColBERT
 
-                rf = ColBERT(
+                return lambda user=None: ColBERT(
                     get_model_path(reranking_model, auto_update),
                     env="docker" if DOCKER else None,
                 )
-
+                
             except Exception as e:
                 log.error(f"ColBERT: {e}")
                 raise Exception(ERROR_MESSAGES.DEFAULT(e))
@@ -162,10 +161,11 @@ def get_rf(
                 try:
                     from open_webui.retrieval.models.external import ExternalReranker
 
-                    rf = ExternalReranker(
+                    return lambda user=None: ExternalReranker(
                         url=external_reranker_url,
                         api_key=external_reranker_api_key,
                         model=reranking_model,
+                        user=user,
                     )
                 except Exception as e:
                     log.error(f"ExternalReranking: {e}")
@@ -174,7 +174,7 @@ def get_rf(
                 import sentence_transformers
 
                 try:
-                    rf = sentence_transformers.CrossEncoder(
+                    return lambda user=None: sentence_transformers.CrossEncoder(
                         get_model_path(reranking_model, auto_update),
                         device=DEVICE_TYPE,
                         trust_remote_code=RAG_RERANKING_MODEL_TRUST_REMOTE_CODE,
@@ -185,8 +185,8 @@ def get_rf(
                     log.error(f"CrossEncoder: {e}")
                     raise Exception(ERROR_MESSAGES.DEFAULT("CrossEncoder error"))
 
-    return rf
-
+    else:
+        return lambda user=None: None
 
 ##########################################
 #
